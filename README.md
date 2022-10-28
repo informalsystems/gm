@@ -51,7 +51,7 @@ git clone https://github.com/informal/gm
 gm/bin/gm install
 ```
 
-Alternatively, you can create the folder `$HOME/.gm/bin` and copy the files from `/bin` in there.
+Alternatively, you can create the folder `$HOME/.gm/bin` and copy the files from `bin` in there.
 The rest is just fluff.
 
 3. Activate `gm`
