@@ -2,11 +2,11 @@
 
 ## TL;DR
 * Tool to manage local gaiad instances - no Docker needed.
-* `scripts/gm/bin/gm install` to install it. Follow the instructions there for dependencies.
+* `bin/gm install` to install it. Follow the instructions there for dependencies.
 * `gm start` to start the nodes specified in the configuration.
 * Config file is in `$HOME/.gm/gm.toml` play around and add more nodes.
 * Tab completion is pretty good, use it! Or run `gm` by itself for help.
-* Pre-1.0 warning: Got a shell error? [Raise an issue!](https://github.com/informalsystems/hermes/issues)
+* Pre-1.0 warning: Got a shell error? [Raise an issue!](https://github.com/informalsystems/gm/issues)
 
 ## Overview
 Gaiad Manager (`gm` from now on) is an easily configurable command-line tool (CLI) that helps manage local `gaiad`
@@ -47,11 +47,11 @@ chmod 755 /usr/local/bin/stoml
 ```
 2. Install `gm`
 ```bash
-git clone https://github.com/informal/ibc-rs
-ibc-rs/scripts/gm/bin/gm install
+git clone https://github.com/informal/gm
+gm/bin/gm install
 ```
 
-Alternatively, you can create the folder `$HOME/.gm/bin` and copy the files from `scripts/gm/bin` in there.
+Alternatively, you can create the folder `$HOME/.gm/bin` and copy the files from `bin` in there.
 The rest is just fluff.
 
 3. Activate `gm`
