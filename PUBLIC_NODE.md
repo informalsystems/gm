@@ -3,6 +3,10 @@
 Below is an example connecting to the Cosmos Hub from an Intel Mac.
 (You can customize it to other operating systems by changing the binary in `gm.toml`.)
 
+Useful links:
+* [Chain registry](https://github.com/cosmos/chain-registry)
+* [Gaiad release v7.1.0](https://github.com/cosmos/gaia/releases/tag/v7.1.0)
+
 ## Set up `gm`
 Minimalistic gm.toml:
 ```toml
@@ -10,6 +14,7 @@ Minimalistic gm.toml:
 gaiad_binary = "https://github.com/cosmos/gaia/releases/download/v7.1.0/gaiad-v7.1.0-darwin-amd64"
 [cosmoshub-4]
 ```
+One-node, no-nonsense Gaiad testnet network.
 
 ## Set up the folders
 We `gm start` to create the folders for this local testnet called "cosmoshub-4"
@@ -28,7 +33,7 @@ I[2022-12-08|11:47:06.994] Removed all blockchain history               dir=/Use
 I[2022-12-08|11:47:06.996] Reset private validator file to genesis state keyFile=/Users/maphlaves/.gm/cosmoshub-4/config/priv_validator_key.json stateFile=/Users/maphlaves/.gm/cosmoshub-4/data/priv_validator_state.json
 ```
 
-## Configure your node
+## Configure the node
 We are ready to configure our node. Download the Cosmos Hub genesis from the chain registry:
 ```bash
 $ wget -O ~/.gm/cosmoshub-4/config/genesis.json.gz https://github.com/cosmos/mainnet/raw/master/genesis/genesis.cosmoshub-4.json.gz
@@ -86,6 +91,22 @@ You can find RPC servers in the [chain registry](https://github.com/cosmos/chain
 
 Set the trust hash and trust height by looking at an existing, trusted Gaia node and query some older heights from it.
 
+## Quick hack to `gm` until a bug is fixed
+If you try to start your node now, it will fail at the `validate-genesis` step. Apparently, the Cosmos Hub genesis file
+is so old that the newer v7 version of the `gaia` binary can't validate it. This is a :sad-cowboy: event and needs to be
+fixed both in `gaia` and possibly accounted for in `gm`. Alas it is not. Here's a quick fix:
+
+Open up your `gm` library file at `$HOME/.gm/bin/lib-gm` and go to line 722. It should say `return 0` and the line above it
+warns about an invalid genesis file.
+Comment out line 722 so you get this result:
+```bash
+ #      return 0
+```
+When you start your node, you will get a warning about an invalid genesis, but now you can safely ignore it.
+If you know bash, you can comment out more lines to avoid that warning entirely.
+An [issue](https://github.com/informalsystems/gm/issues/5) is open for this.
+
+
 ## Start your node
 ...and see how it behaves:
 ```bash
@@ -93,7 +114,7 @@ gm start
 gm log cosmoshub-4 -f
 ```
 
-The node will start with invariant checks that it will try to dial some peers. After a while it will start stake syncing
+The node will start with invariant checks then it will try to dial some peers. After a while it will start stake syncing
 and you will see similar entries in the log:
 ```
 1:37PM INF Fetching snapshot chunk chunk=43 format=1 height=13166000 module=statesync total=76
@@ -123,3 +144,17 @@ If you poll the `/status` endpoint, you will see that the node is catching up:
 ```
 
 Then your laptop overheats.
+
+## System requirements
+Finally, we should mention what you always find out last: how much resource will a node need?
+The current Cosmos Hub node in production uses about 6-8 cores, 30GB of RAM and 300GB of disk space allocated.
+You can try with lower settings as a test but depending on network, some require a lot of RAM for crisis invariant checks.
+The good news is that if you run this on your laptop, it will eat up all your available resources.
+
+`gm` is flexible, so you can even start your node directly with gaiad (but it's worth doing it through `gm` for convenience).
+
+To start a node with no invariant checks, you run:
+```bash
+gaiad start --home $HOME/.gm/cosmoshub-4
+```
+In this case, managing the process is completely out of `gm`'s hands.
