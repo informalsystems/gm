@@ -155,6 +155,6 @@ The good news is that if you run this on your laptop, it will eat up all your av
 
 To start a node with no invariant checks, you run:
 ```bash
-gaiad start --home $HOME/.gm/cosmoshub-4
+gaiad start --x-crisis-skip-assert-invariants --home $HOME/.gm/cosmoshub-4
 ```
 In this case, managing the process is completely out of `gm`'s hands.
