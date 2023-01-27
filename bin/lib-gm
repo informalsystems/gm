@@ -999,7 +999,7 @@ gas_price = { price = 0.01, denom = '${DENOM}' }
 max_gas = 10000000
 clock_drift = '5s'
 trusting_period = '14days'
-trust_threshold = { numerator = '1', denominator = '3' }
+trust_threshold = { numerator = '2', denominator = '3' }
 
 EOF
     done
