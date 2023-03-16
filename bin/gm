@@ -99,7 +99,7 @@ case "${1:-help}" in
           hermes_cc
         else 
           if [ $# -eq 2 ] && [ "$2" = "--exec" ]; then
-            hermes_cc | bash
+            hermes_cc | sh
           else 
             echo "usage : gm hermes cc [--exec]"
           fi

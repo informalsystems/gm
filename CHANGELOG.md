@@ -1,5 +1,14 @@
 # Gaiad Manager Change Log
 
+## v0.1.4
+
+### BUGFIXES
+
+- Fixed quiet exit when hermes binary is invalid ([#2]).
+- POSIX compliance: hermes cc --exec now invokes `sh` instead of `bash`.
+
+[#2]: https://github.com/informalsystems/gm/issues/2
+
 ## v0.1.3
 
 ### BUGFIXES

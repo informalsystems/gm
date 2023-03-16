@@ -5,7 +5,7 @@ if [ "${DEBUG:-}" = "2" ]; then
 fi
 
 version() {
-  VERSION="v0.1.3"
+  VERSION="v0.1.4"
   if is_json_output; then
     echo '{"status": "success", "message": "'"${VERSION}"'"}'
   else
@@ -273,19 +273,19 @@ disable_when_json() {
 
 info() {
   if ! is_json_output; then
-    echo "$*"
+    echo "$*" >&2
   fi
 }
 
 debug() {
   if [ -n "${DEBUG:-}" ]; then
-    echo "DEBUG: $*" 1>&2
+    echo "DEBUG: $*" >&2
   fi
 }
 
 warn() {
   if ! is_json_output; then
-    echo "WARNING: $*"
+    echo "WARNING: $*" >&2
   fi
 }
 
@@ -307,9 +307,9 @@ warn_unknown_hermes_node() {
 
 exit_with_error() {
   if is_json_output; then
-    echo '{"status": "error", "message": "'"$*"'"}'
+    echo '{"status": "error", "message": "'"$*"'"}' >&2
   else
-    echo "ERROR: $*, exiting..."
+    echo "ERROR: $*, exiting..." >&2
     return 1
   fi
 }
@@ -382,7 +382,7 @@ eval_binary() {
       if [ -n "${DOWNLOADER}" ]; then
         debug "downloading ${RAW_BINARY} using wget..."
         # shellcheck disable=SC2086
-        "${DOWNLOADER}" -q -nd ${WGET_DOWNLOAD_OPTIONS:-} "${RAW_BINARY}" -O "${BINARY}"
+        "${DOWNLOADER}" -q -nd ${WGET_DOWNLOAD_OPTIONS:-} "${RAW_BINARY}" -O "${BINARY}" || exit_with_error wget "${RAW_BINARY}" failed
         chmod +x "${BINARY}"
         echo "${BINARY}"
       else
@@ -390,7 +390,7 @@ eval_binary() {
         if [ -n "${DOWNLOADER}" ]; then
           debug "downloading ${RAW_BINARY} using curl..."
           # shellcheck disable=SC2086
-          "${DOWNLOADER}" -s -f -L ${CURL_DOWNLOAD_OPTIONS:-} "${RAW_BINARY}" -o "${BINARY}"
+          "${DOWNLOADER}" -s -f -L ${CURL_DOWNLOAD_OPTIONS:-} "${RAW_BINARY}" -o "${BINARY}" || exit_with_error curl "${RAW_BINARY}" failed
           chmod +x "${BINARY}"
           echo "${BINARY}"
         else
