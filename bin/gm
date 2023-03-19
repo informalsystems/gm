@@ -35,6 +35,7 @@ hermes      sub-command for hermes-related configuration
 install     install the script for the local user
 keys        print the keys of validator nodes
 log         print the log of a node
+nuke        stop one or more nodes, delete their configuration and restart them
 ports       print the ports of a (running) node
 start       start one or more nodes (starts all nodes if no parameter is given)
 status      print the status of nodes
@@ -173,6 +174,34 @@ case "${1:-help}" in
         tail -r $LIST
       fi
     fi
+    ;;
+  nuke)
+    parse_config_file
+    shift
+    if [ "$#" -eq 0 ]; then
+      NODES_TO_STOP="$ALL_NODES"
+    else
+      NODES_TO_STOP="$*"
+    fi
+    for i in $NODES_TO_STOP
+    do
+      warn_unknown_node "$i" || continue
+      if is_running "$i"; then
+        stop "$i"
+        sleep 1
+      fi
+      safer_rm "$i"
+    done
+    for i in $NODES_TO_STOP
+    do
+      if [ ! -d "$(get_home_dir "$i")" ]; then
+        create "$i" || continue
+      fi
+      if get_auto_maintain_config "$i"; then
+        configure "$i"
+      fi
+      start "$i"
+    done
     ;;
   ports)
     disable_when_json

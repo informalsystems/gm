@@ -56,11 +56,10 @@ The rest is just fluff.
 
 3. Activate `gm`
 * Add `source $HOME/.gm/bin/shell-support` to a file that executes when a new terminal window comes up
-  (`$HOME/.bash_profile` or `$HOME/.bashrc`)
-* (Optional) Enable auto-completion
+  (`$HOME/.bash_profile`, `$HOME/.bashrc` or `$HOME/.zshrc`)
+* (Optional) Enable auto-completion for bash on systems that don't provide it by default
 On MacOS:
 ```bash
-# Note: zsh is the default shell on MacOS, so no need to run this unless you explicitly use bash
 brew install bash-completion
 ```
 On Linux:
@@ -219,6 +218,14 @@ Tip: it will show you the seed phrase if it can find it in the folder.
 **Description**: Show the log of the specified node(s). At least one node has to be specified.
 
 Tip: You can put `-f` and `-r` anywhere after `log` to get `tail -f` or `tail -r`-like functionality.
+
+### `gm nuke [<node> ...]`
+**Description**: Stop the node(s), delete their configuration, recreate fresh configuration and start the nodes up again.
+This will use the defined `gaiad` binary and configuration.
+If no node is specified then it will nuke all nodes.
+
+Tip: Nodes that were stopped originally will be started. Nodes that were running will be stopped and restarted after
+fresh configuration is created.
 
 ### `gm ports [<node> ...]`
 **Description**: List the ports assigned to a node.

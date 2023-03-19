@@ -659,11 +659,6 @@ configure() {
   sconfig "$HOME_DIR/config/config.toml" "p2p.laddr=tcp://0.0.0.0:${P2P}" 1> /dev/null
   sconfig "$HOME_DIR/config/config.toml" "rpc.laddr=tcp://0.0.0.0:${RPC}" 1> /dev/null
   sconfig "$HOME_DIR/config/config.toml" "rpc.pprof_laddr=0.0.0.0:${PPROF}" 1> /dev/null
-  # Workaround for https://github.com/spf13/viper/issues/1132
-  #   Viper does not support writing array of arrays so we clean out the variable
-  sconfig "$HOME_DIR/config/app.toml" -t stringSlice "telemetry.global-labels=panic gaiad" 1> /dev/null
-  sed -i.bak 's/  global-labels = \["panic","gaiad"\]/  global-labels = []/' "$HOME_DIR/config/app.toml"
-  # End of workaround
   sconfig "$HOME_DIR/config/app.toml" "api.address=tcp://0.0.0.0:${APP}" 1> /dev/null
   sconfig "$HOME_DIR/config/app.toml" "api.enable=true" 1> /dev/null
   sconfig "$HOME_DIR/config/app.toml" "api.swagger=true" 1> /dev/null
@@ -718,8 +713,7 @@ start() {
     GAIAD_LOG="${HOME_DIR}/log"
     VALIDATION="$("$GAIAD_BINARY" validate-genesis --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 || echo "ERR")"
     if [ "$VALIDATION" = "ERR" ]; then
-      warn "invalid genesis.json for ${1}. Please check the log and fix manually. Skipping..."
-      return 0
+      warn "validate-genesis could not complete for ${1}"
     fi
     nohup "$GAIAD_BINARY" start --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 &
     GAIAD_PID=$!
@@ -1099,24 +1093,28 @@ reset() {
 safer_rm() {
   if [ $# -eq 1 ]; then
     if a_in_b "$1" "$ALL_NODES"; then
-      HOME_DIR="$(get_home_dir "$1")"
-      if [ -d "$HOME_DIR" ]; then
-        if [ -d "$HOME_DIR/config" ]; then
-          if [ -f "$HOME_DIR/config/config.toml" ]; then
-            if [ -d "$HOME_DIR/data" ]; then
-              info "Executing \"rm -r $HOME_DIR\"..."
-              rm -r "$HOME_DIR"
+      if get_auto_maintain_config "$1"; then
+        HOME_DIR="$(get_home_dir "$1")"
+        if [ -d "$HOME_DIR" ]; then
+          if [ -d "$HOME_DIR/config" ]; then
+            if [ -f "$HOME_DIR/config/config.toml" ]; then
+              if [ -d "$HOME_DIR/data" ]; then
+                info "Executing \"rm -r $HOME_DIR\"..."
+                rm -r "$HOME_DIR"
+              else
+                warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain data folder, skipping..."
+              fi
             else
-              warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain data folder, skipping..."
+              warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain config file, skipping..."
             fi
           else
-            warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain config file, skipping..."
+            warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain config folder, skipping..."
           fi
         else
-          warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not contain config folder, skipping..."
+          warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not exist, skipping..."
         fi
       else
-        warn "Anxious to run \"rm -r ${HOME_DIR}\" automatically, folder does not exist, skipping..."
+        warn "Node \"${1}\" has auto_maintain_config set to false, skipping..."
       fi
     else
       warn "Anxious to delete \"${1}\" automatically, node not in configuration, skipping..."

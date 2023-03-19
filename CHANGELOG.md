@@ -6,8 +6,21 @@
 
 - Fixed quiet exit when hermes binary is invalid ([#2]).
 - POSIX compliance: hermes cc --exec now invokes `sh` instead of `bash`.
+- `app.toml` array of arrays are rendered properly now. ([#4]).
+- Genesis validation is now optional, just a warning is displayed ([#5]).
+- `rm` command will not delete folders that have `auto_maintain_config` set to false.
 
 [#2]: https://github.com/informalsystems/gm/issues/2
+[#4]: https://github.com/informalsystems/gm/issues/4
+[#5]: https://github.com/informalsystems/gm/issues/5
+
+### FEATURES
+- `nuke` command implemented: stop running nodes, delete configuration, recreate fresh config and start nodes.
+
+[#3]: https://github.com/informalsystems/gm/issues/3
+
+### IMPROVEMENTS
+- Improved wording in the documentation.
 
 ## v0.1.3
 

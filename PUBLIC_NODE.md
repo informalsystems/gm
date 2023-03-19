@@ -91,22 +91,6 @@ You can find RPC servers in the [chain registry](https://github.com/cosmos/chain
 
 Set the trust hash and trust height by looking at an existing, trusted Gaia node and query some older heights from it.
 
-## Quick hack to `gm` until a bug is fixed
-If you try to start your node now, it will fail at the `validate-genesis` step. Apparently, the Cosmos Hub genesis file
-is so old that the newer v7 version of the `gaia` binary can't validate it. This is a :sad-cowboy: event and needs to be
-fixed both in `gaia` and possibly accounted for in `gm`. Alas it is not. Here's a quick fix:
-
-Open up your `gm` library file at `$HOME/.gm/bin/lib-gm` and go to line 722. It should say `return 0` and the line above it
-warns about an invalid genesis file.
-Comment out line 722 so you get this result:
-```bash
- #      return 0
-```
-When you start your node, you will get a warning about an invalid genesis, but now you can safely ignore it.
-If you know bash, you can comment out more lines to avoid that warning entirely.
-An [issue](https://github.com/informalsystems/gm/issues/5) is open for this.
-
-
 ## Start your node
 ...and see how it behaves:
 ```bash
