@@ -65,6 +65,61 @@ EOF
 }
 
 case "${1:-help}" in
+  alias)
+    disable_when_json
+    parse_config_file
+    for i in ${ALL_NODES}
+    do
+      echo "alias t-${i}=\"gm exec ${i}\""
+    done
+    ;;
+  exec)
+    parse_config_file
+    shift
+    if [ "$#" -eq 0 ]; then
+      exit_with_error "no node was given"
+    fi
+    NODE="$1"
+    warn_unknown_node "$NODE"
+    shift
+    GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+    HOME_DIR="$(get_home_dir "$NODE")"
+    RPC_PORT="http://localhost:$(get_rpc_port "$NODE")"
+    CHAIN_ID="$(get_chain_id "$NODE")"
+    if [ $# -eq 0 ]; then
+      "$GAIAD_BINARY"
+      echo "--home ${HOME_DIR}"
+      echo "--node ${RPC_PORT}"
+      echo "--chain-id ${CHAIN_ID}"
+      echo "--keyring-backend test"
+    else
+      case "$1" in
+        "collect-gentxs" | "config" | "debug" | "export" | "help" | "rollback" | "start" | "tendermint" | "testnet" | "validate-genesis" | "version")
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
+          ;;
+        "keys" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test "$@"
+          ;;
+        "add-genesis-account" | "gentx" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" "$@"
+          ;;
+        "tx" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
+          ;;
+        "status" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" "$@"
+          ;;
+        "query" | "q" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
+          ;;
+        "init" )
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" --chain-id "${CHAIN_ID}" "$@"
+          ;;
+        *)
+          "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
+      esac
+    fi
+    ;;
   help)
     disable_when_json
     usage
@@ -98,10 +153,10 @@ case "${1:-help}" in
         parse_config_file
         if [ $# -eq 1 ]; then
           hermes_cc
-        else 
+        else
           if [ $# -eq 2 ] && [ "$2" = "--exec" ]; then
             hermes_cc | sh
-          else 
+          else
             echo "usage : gm hermes cc [--exec]"
           fi
         fi
