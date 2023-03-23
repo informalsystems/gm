@@ -58,7 +58,7 @@ _gm_hermes_nodes() {
 
 _gm_complete_commands() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local cmds="help hermes install keys log nuke ports start status stop reset rm version"
+  local cmds="create-validator cv help hermes install keys log new-wallet nuke ports start status stop reset rm version"
   while read -r line; do COMPREPLY+=("$line"); done < <(compgen -W "$cmds" -- "$cur")
 }
 
@@ -98,9 +98,12 @@ _gm() {
 
   # subcommands have their own completion functions
   case "$cmd" in
+    create-validator) _gm_nodes ;;
+    cv) _gm_nodes ;;
     hermes) _gm_hermes_complete_commands ;;
     keys) _gm_nodes ;;
     log) _gm_nodes_log ;;
+    new-wallet) _gm_nodes ;;
     nuke) _gm_nodes ;;
     ports) _gm_nodes ;;
     start) _gm_nodes ;;

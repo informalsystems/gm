@@ -477,7 +477,7 @@ get_auto_maintain_config() {
 get_network() {
   RESULT="$(stoml -q "$CONFIG_FILE" "${1}.network")"
   if [ -z "$RESULT" ]; then
-    exit_with_error "network not found for node ${1}"
+    RESULT="$1"
   else
     if ! a_in_b "$RESULT" "$VALIDATORS"; then
       return 1
@@ -568,6 +568,13 @@ EOF
   echo "$account_prefix"
 }
 
+# get_consensus_key <node>
+get_consensus_key() {
+  GAIAD_BINARY="$(get_gaiad_binary "$1")"
+  HOME_DIR="$(get_home_dir "$1")"
+  "${GAIAD_BINARY}" tendermint show-validator --home "${HOME_DIR}"
+}
+
 create() {
   info "Creating $1 config..."
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
@@ -629,7 +636,7 @@ create() {
       EXTRA_WALLETS_COUNTER="$((EXTRA_WALLETS_COUNTER - 1))"
     done
     # Create gentx
-    "$GAIAD_BINARY" gentx validator "10000000${DENOM}" --keyring-backend test --keyring-dir "${HOME_DIR}" --home "${HOME_DIR}" --chain-id "$1" 2> /dev/null
+    "$GAIAD_BINARY" gentx validator "1000000${DENOM}" --keyring-backend test --keyring-dir "${HOME_DIR}" --home "${HOME_DIR}" --chain-id "$1" 2> /dev/null
     # Collect gentxs
     "$GAIAD_BINARY" collect-gentxs --home "${HOME_DIR}" 2> /dev/null
     # Validate genesis
@@ -650,6 +657,7 @@ create() {
 
 configure() {
   HOME_DIR="$(get_home_dir "$1")"
+  CHAIN_ID="$(get_chain_id "$1")"
   P2P="$(get_p2p_port "$1")"
   RPC="$(get_rpc_port "$1")"
   APP="$(get_app_port "$1")"
@@ -664,6 +672,9 @@ configure() {
   sconfig "$HOME_DIR/config/app.toml" "api.swagger=true" 1> /dev/null
   sconfig "$HOME_DIR/config/app.toml" "grpc.address=0.0.0.0:${GRPC}" 1> /dev/null
   sconfig "$HOME_DIR/config/app.toml" "grpc-web.address=0.0.0.0:${GRPCW}" 1> /dev/null
+  sconfig "$HOME_DIR/config/client.toml" "keyring-backend=test" 1> /dev/null
+  sconfig "$HOME_DIR/config/client.toml" "node=tcp://127.0.0.1:${RPC}" 1> /dev/null
+  sconfig "$HOME_DIR/config/client.toml" "chain-id=${CHAIN_ID}" 1> /dev/null
   if ! a_in_b "$i" "$VALIDATORS"; then
     NETWORK="$(get_network "$1")"
     NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
@@ -1122,4 +1133,189 @@ safer_rm() {
   else
     warn "Anxious to delete \"${*}\" automatically, looks like multiple paths, skipping..."
   fi
+}
+
+exec_function() {
+  NODE="$1"
+  shift
+  GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+  HOME_DIR="$(get_home_dir "$NODE")"
+  RPC_PORT="http://localhost:$(get_rpc_port "$NODE")"
+  CHAIN_ID="$(get_chain_id "$NODE")"
+  # Possibly the below identification of commands is overkill, since the client.toml configuration works again.
+  # But there were times it didn't work so we keep it for compatibility.
+  if [ $# -eq 0 ]; then
+    "$GAIAD_BINARY"
+    echo "--home ${HOME_DIR}"
+    echo "--node ${RPC_PORT}"
+    echo "--chain-id ${CHAIN_ID}"
+    echo "--keyring-backend test"
+  else
+    case "$1" in
+      "collect-gentxs" | "config" | "debug" | "export" | "help" | "rollback" | "start" | "tendermint" | "testnet" | "validate-genesis" | "version")
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
+        ;;
+      "keys" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test "$@"
+        ;;
+      "add-genesis-account" | "gentx" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" "$@"
+        ;;
+      "tx" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
+        ;;
+      "status" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" "$@"
+        ;;
+      "query" | "q" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
+        ;;
+      "init" )
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" --chain-id "${CHAIN_ID}" "$@"
+        ;;
+      *)
+        "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
+    esac
+  fi
+}
+
+# fund_wallet <node_name> <wallet_name>
+fund_wallet() {
+  NODE="${1}"
+  WALLET_NAME="${2}"
+  GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+  HOME_DIR="$(get_home_dir "$NODE")"
+  RPC="http://localhost:$(get_rpc_port "$NODE")"
+  CHAIN_ID="$(get_chain_id "$NODE")"
+  DENOM="$(get_staking_denom "$NODE")"
+  NETWORK="$(get_network "$NODE")"
+  NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
+  WALLET_ADDRESS="$("${GAIAD_BINARY}" keys show \
+    "${WALLET_NAME}" \
+    --keyring-backend test \
+    --keyring-dir "${NETWORK_HOME_DIR}" \
+    --home "${HOME_DIR}" \
+    --address)"
+  if "${GAIAD_BINARY}" tx bank send \
+      "wallet" \
+      "${WALLET_ADDRESS}" \
+      "1001000${DENOM}" \
+      --fees "10${DENOM}" \
+      --keyring-backend test \
+      --keyring-dir "${NETWORK_HOME_DIR}" \
+      --node "${RPC}" \
+      --chain-id "${CHAIN_ID}" \
+      --home "${HOME_DIR}" \
+      --yes 1> /dev/null 2> /dev/null; then
+    info "sent funding transaction for wallet '${WALLET_NAME}'"
+  else
+    exit_with_error "could not fund wallet '${WALLET_NAME}'. Please fund it manually"
+  fi
+}
+
+# create_validator <node_name> <wallet>
+create_validator() {
+  NODE="${1}"
+  WALLET="${2}"
+  if a_in_b "${NODE}" "${VALIDATORS}"; then
+    exit_with_error "validator already exists"
+  fi
+  GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+  HOME_DIR="$(get_home_dir "$NODE")"
+  RPC="http://localhost:$(get_rpc_port "$NODE")"
+  CHAIN_ID="$(get_chain_id "$NODE")"
+  NETWORK="$(get_network "$NODE")"
+  NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
+  DENOM="$(get_staking_denom "$NODE")"
+  CONSENSUS_KEY="$(get_consensus_key "$NODE")"
+  "${GAIAD_BINARY}" tx staking create-validator \
+  --amount=1000000"${DENOM}" \
+  --chain-id "${CHAIN_ID}" \
+  --pubkey="${CONSENSUS_KEY}" \
+  --commission-max-change-rate=0.5 \
+  --commission-rate=0.05 \
+  --commission-max-rate=1 \
+  --min-self-delegation=1000 \
+  --home "${HOME_DIR}" \
+  --keyring-backend test \
+  --keyring-dir "${NETWORK_HOME_DIR}" \
+  --from "${WALLET}" \
+  --node "${RPC}" \
+  --yes \
+  --output json | sed 's/.*txhash": *"\([0-9A-F]*\)".*/Create-validator transaction hash: \1/'
+}
+
+# create_wallet <node_name> <wallet_name> [<wallet_name>...]
+create_wallet() {
+  NODE="$1"
+  shift
+  GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+  NETWORK="$(get_network "$NODE")"
+  NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
+  HDPATH="$(get_hdpath "$NODE")"
+  while [ $# -gt 0 ];
+  do
+    # Check if the key is already imported.
+    if "${GAIAD_BINARY}" keys show "$1" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1>/dev/null 2>/dev/null; then
+      warn "key '${1}' already imported on network '${NETWORK}', skipping..."
+      shift
+      continue
+    fi
+    # If we have an invalid key on file, we will delete it so we can create a new.
+    if [ -f "${NETWORK_HOME_DIR}/${1}_seed.json" ]; then
+      KEY_MNEMONIC="$(stoml "${NETWORK_HOME_DIR}/${1}_seed.json" mnemonic)"
+      if [ -z "${KEY_MNEMONIC}" ]; then
+        warn "mnemonic not found for key '${1}' on network '${NETWORK}', creating new key..."
+        rm "${NETWORK_HOME_DIR}/${1}_seed.json"
+      fi
+    fi
+    # If the key file already exists, we will import the key.
+    if [ -f "${NETWORK_HOME_DIR}/${1}_seed.json" ]; then
+      KEY_MNEMONIC="$(stoml "${NETWORK_HOME_DIR}/${1}_seed.json" mnemonic)"
+      if [ -z "${KEY_MNEMONIC}" ]; then
+        warn "mnemonic could not be created for key '${1}' on network '${NETWORK}', skipping..."
+        shift
+        continue
+      fi
+      if [ -z "${HDPATH}" ]; then
+        if ! echo "${KEY_MNEMONIC}" | "${GAIAD_BINARY}" keys add "$1" --recover --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 2>&1 1>/dev/null; then
+          warn "could not add key '${1}' with mnemonic to network '${NETWORK}'"
+          shift
+          continue
+        else
+          info "key '${1}' with mnemonic added on network '${NETWORK}'"
+        fi
+      else
+        if ! echo "${KEY_MNEMONIC}" | "${GAIAD_BINARY}" keys add "$1" --hd-path "$HDPATH" --recover --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 2>&1 1>/dev/null; then
+          warn "could not add key '${1}' with mnemonic to network '${NETWORK}'"
+          shift
+          continue
+        else
+          info "key '${1}' with mnemonic added on network '${NETWORK}'"
+        fi
+      fi
+    # If the key file does not exist, we will create a new key.
+    else
+      if [ -z "${HDPATH}" ]; then
+        if ! "${GAIAD_BINARY}" keys add "$1" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1 1>/dev/null; then
+          warn "could not create key '${1}' on network '${NETWORK}'"
+          shift
+          continue
+        else
+          info "created key '${1}' on network '${NETWORK}'"
+        fi
+      else
+        if ! "${GAIAD_BINARY}" keys add "$1" --hd-path "$HDPATH" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1 1>/dev/null; then
+          warn "could not create key '${1}' on network '${NETWORK}'"
+          shift
+          continue
+        else
+          info "created key '${1}' on network '${NETWORK}'"
+        fi
+      fi
+    fi
+    # We created a new key successfully. Let's fund it.
+    fund_wallet "${NODE}" "${1}"
+    shift
+  done
 }

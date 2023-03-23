@@ -73,52 +73,63 @@ case "${1:-help}" in
       echo "alias t-${i}=\"gm exec ${i}\""
     done
     ;;
+  cv|create-validator)
+    parse_config_file
+    shift
+    if [ $# -eq 0 ]; then
+      info "Usage:"
+      info "       gm create-validator <node_name> [<node_name>...]"
+      info ""
+      info "       node_name   - an existing and running non-validator node on a network"
+      info ""
+      exit_with_error "at least one node is required"
+    fi
+    while [ $# -gt 0 ];
+    do
+      NODE="${1}"
+      if a_in_b "$NODE" "$VALIDATORS"; then
+        warn "node '${1}' is already a validator, skipping..."
+        shift
+        continue
+      fi
+      if ! a_in_b "$NODE" "$FULL_NODES"; then
+        warn "non-existent node '${1}', skipping..."
+        shift
+        continue
+      fi
+      if ! is_running "$NODE"; then
+        warn "node '${1}' is not running, skipping..."
+        shift
+        continue
+      fi
+      create_wallet "$NODE" "$NODE"
+      sleep 10
+      create_validator "$NODE" "$NODE"
+      shift
+    done
+    ;;
+  new-wallet)
+    parse_config_file
+    shift
+    if [ $# -lt 2 ]; then
+      info "Usage:"
+      info "       gm new-wallet <node_name> <wallet_name> [<wallet_name>...]"
+      info ""
+      info "       node_name   - a running node on a live network"
+      info "       wallet_name - a new wallet name"
+      info ""
+      exit_with_error "invalid parameters"
+    fi
+    create_wallet "$@"
+    ;;
   exec)
     parse_config_file
     shift
     if [ "$#" -eq 0 ]; then
       exit_with_error "no node was given"
     fi
-    NODE="$1"
-    warn_unknown_node "$NODE"
-    shift
-    GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
-    HOME_DIR="$(get_home_dir "$NODE")"
-    RPC_PORT="http://localhost:$(get_rpc_port "$NODE")"
-    CHAIN_ID="$(get_chain_id "$NODE")"
-    if [ $# -eq 0 ]; then
-      "$GAIAD_BINARY"
-      echo "--home ${HOME_DIR}"
-      echo "--node ${RPC_PORT}"
-      echo "--chain-id ${CHAIN_ID}"
-      echo "--keyring-backend test"
-    else
-      case "$1" in
-        "collect-gentxs" | "config" | "debug" | "export" | "help" | "rollback" | "start" | "tendermint" | "testnet" | "validate-genesis" | "version")
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
-          ;;
-        "keys" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test "$@"
-          ;;
-        "add-genesis-account" | "gentx" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" "$@"
-          ;;
-        "tx" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --keyring-backend test --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
-          ;;
-        "status" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" "$@"
-          ;;
-        "query" | "q" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --node "${RPC_PORT}" --chain-id "${CHAIN_ID}" "$@"
-          ;;
-        "init" )
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" --chain-id "${CHAIN_ID}" "$@"
-          ;;
-        *)
-          "${GAIAD_BINARY}" --home "${HOME_DIR}" "$@"
-      esac
-    fi
+    warn_unknown_node "$1"
+    exec_function "$@"
     ;;
   help)
     disable_when_json
@@ -238,12 +249,16 @@ case "${1:-help}" in
     else
       NODES_TO_STOP="$*"
     fi
+    NOT_RUNNING=""
     for i in $NODES_TO_STOP
     do
       warn_unknown_node "$i" || continue
       if is_running "$i"; then
         stop "$i"
         sleep 1
+      else
+        info "Already stopped ${i}..."
+        NOT_RUNNING="${NOT_RUNNING} $i"
       fi
       safer_rm "$i"
     done
@@ -255,7 +270,11 @@ case "${1:-help}" in
       if get_auto_maintain_config "$i"; then
         configure "$i"
       fi
-      start "$i"
+      if a_in_b "$i" "${NOT_RUNNING}"; then
+        info "$i not started, it was in stopped state before..."
+      else
+        start "$i"
+      fi
     done
     ;;
   ports)
