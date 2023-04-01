@@ -13,6 +13,11 @@
 - `gm alias` will print useful aliases for `gm exec` to simplify local execution further.
 - `gm create-validator` (or `gm cv` for short) command will elevate a running node to validator status.
 - `gm new-wallet` command will create a new wallet on the network and fund it with the staking token from the `wallet` wallet.
+- `gm explorer init` downloads the experimental block explorer files and checks requirements.
+- `gm explorer config` reconfigures the experimental block explorer to the managed networks.
+- `gm explorer start` builds and starts the experimental block explorer.
+- `gm explorer status` shows if the experimental block explorer is running.
+- `gm explorer stop` stops a running experimental block explorer.
 
 ### IMPROVEMENTS
 

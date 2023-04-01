@@ -219,6 +219,31 @@ osmosisd query staking validators --node http://localhost:27000 --chain-id osmos
 Tip: The command is also capable of providing the correct keystore for the network automatically.
 Try `gm exec mynode tx bank send`.
 
+### `gm explorer init`
+**Description**: Check explorer requirements and download an experimental block explorer.
+
+Tip: You will need `yarn` installed and `tar` or `unzip`.
+
+### `gm explorer config`
+**Description**: Reconfigure the block explorer's configuration and rebuild the code.
+
+Tip: You only need to re-run this when you makes changes in `gm.toml`.
+
+### `gm explorer start`
+**Description**: Start the experimental block explorer.
+
+Tip: You can see the web interface at [http://localhost:8080](http://localhost:8080).
+
+### `gm explorer status`
+**Description**: Check if the experimental block explorer is running.
+
+Tip: It uses the same mechanism that we use for nodes. The PID is stored in `$HOME/.gm/explorer/pid`.
+
+### `gm explorer stop`
+**Description**: Stop the experimental block explorer.
+
+Tip: You don't need to stop the block explorer to reconfigure its configuration.
+
 ### `gm help`
 **Description**: shows the help screen
 

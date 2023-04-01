@@ -30,11 +30,15 @@ Usage:
 
 COMMANDS    DESCRIPTION
 
+alias       print useful aliases for exec
+exec        execute binary commands on nodes
+explorer    sub-commands for the experimental blockchain explorer
 help        print this help and exit
 hermes      sub-command for hermes-related configuration
 install     install the script for the local user
 keys        print the keys of validator nodes
 log         print the log of a node
+new-wallet  create funded wallet
 nuke        stop one or more nodes, delete their configuration and restart them
 ports       print the ports of a (running) node
 start       start one or more nodes (starts all nodes if no parameter is given)
@@ -64,6 +68,24 @@ keys         add keys to $HOME/.hermes
 EOF
 }
 
+explorer_usage() {
+  cat <<EOF
+Gaiad Manager $(version)
+
+Usage:
+  gm explorer <SUBCOMMAND> [[<PARAMS>]...]
+
+SUBCOMMANDS    DESCRIPTION
+
+init           Check requirements and download explorer
+config         Configure/reconfigure explorer network chains
+start          Start the explorer
+status         Check if the explorer is running
+stop           Stop the explorer
+
+EOF
+}
+
 case "${1:-help}" in
   alias)
     disable_when_json
@@ -71,6 +93,10 @@ case "${1:-help}" in
     for i in ${ALL_NODES}
     do
       echo "alias t-${i}=\"gm exec ${i}\""
+    done
+    for i in ${VALIDATORS}
+    do
+      echo "alias w-${i}=\"gm exec ${i} keys show -a\""
     done
     ;;
   cv|create-validator)
@@ -107,6 +133,42 @@ case "${1:-help}" in
       create_validator "$NODE" "$NODE"
       shift
     done
+    ;;
+  explorer)
+    disable_when_json
+    shift
+    case "${1:-help}" in
+      help)
+        disable_when_json
+        explorer_usage
+        ;;
+      init)
+        explorer_requirements
+        explorer_init
+        ;;
+      config|configure)
+        parse_config_file
+        explorer_config
+        ;;
+      start)
+        explorer_requirements
+        parse_config_file
+        explorer_start
+        ;;
+      status)
+        parse_config_file
+        explorer_status
+        ;;
+      stop)
+        parse_config_file
+        explorer_stop
+        ;;
+      *)
+        disable_when_json
+        explorer_usage
+        exit_with_error "could not understand the command explorer '$1'"
+        ;;
+    esac
     ;;
   new-wallet)
     parse_config_file

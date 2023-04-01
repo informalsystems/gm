@@ -102,6 +102,10 @@ parse_config_file() {
     if [ "$i" = "global" ] || [ "$i" = "global.hermes" ]; then
       continue
     fi
+    if [ "$i" = "explorer" ]; then
+      warn "invalid section: 'explorer' in configuration"
+      continue
+    fi
     if [ -z "$(stoml "$CONFIG_FILE" "${i}.network")" ]; then
       VALIDATORS="$VALIDATORS $i"
       if get_add_to_hermes "$i"; then
@@ -1248,11 +1252,15 @@ create_validator() {
 # create_wallet <node_name> <wallet_name> [<wallet_name>...]
 create_wallet() {
   NODE="$1"
+  if ! a_in_b "$NODE" "$ALL_NODES"; then
+    exit_with_error "node ${NODE} not found in configuration"
+  fi
   shift
   GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
   NETWORK="$(get_network "$NODE")"
   NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
   HDPATH="$(get_hdpath "$NODE")"
+  FUNDING_IN_PROGRESS=0
   while [ $# -gt 0 ];
   do
     # Check if the key is already imported.
@@ -1315,7 +1323,169 @@ create_wallet() {
       fi
     fi
     # We created a new key successfully. Let's fund it.
+    if [ ${FUNDING_IN_PROGRESS} -ne 0 ]; then
+      info "waiting for previous transaction to complete"
+      sleep 7
+    fi
     fund_wallet "${NODE}" "${1}"
+    FUNDING_IN_PROGRESS=1
     shift
   done
+}
+
+explorer_requirements() {
+  if [ -z "$(which yarn || echo)" ]; then
+    exit_with_error "missing yarn, install instructions are at https://classic.yarnpkg.com/lang/en/docs/install"
+  fi
+  UNZIP="$(which unzip || echo)"
+  if [ -z "$UNZIP" ]; then
+    TAR="$(which tar || echo)"
+    if [ -z "$TAR" ]; then
+      exit_with_error "missing unzip AND tar, please install at least one"
+    fi
+  fi
+}
+
+explorer_download() {
+  # Define parameters
+  URL_ZIP="https://github.com/ping-pub/explorer/archive/refs/tags/v0.45.x.zip"
+  URL_TGZ="https://github.com/ping-pub/explorer/archive/refs/tags/v0.45.x.tar.gz"
+  UNZIP="$(which unzip || echo)"
+  TAR="$(which tar || echo)"
+  DOWNLOAD_URL="${URL_ZIP}"
+  BINARY="${HOME}/.gm/v0.45.x.zip"
+  if [ -z "$UNZIP" ]; then
+    DOWNLOAD_URL="${URL_TGZ}"
+    BINARY="${HOME}/.gm/v0.45.x.tar.gz"
+    if [ -z "$TAR" ]; then
+      exit_with_error "missing unzip AND tar, please install at least one"
+    fi
+  fi
+  # Download compressed source code
+  DOWNLOADER="$(which wget)"
+  if [ -n "${DOWNLOADER}" ]; then
+    debug "downloading explorer using wget..."
+    # shellcheck disable=SC2086
+    "${DOWNLOADER}" -q -nd ${WGET_DOWNLOAD_OPTIONS:-} "${DOWNLOAD_URL}" -O "${BINARY}" || exit_with_error wget "${DOWNLOAD_URL}" failed
+  else
+    DOWNLOADER="$(which curl)"
+    if [ -n "${DOWNLOADER}" ]; then
+      debug "downloading ${DOWNLOAD_URL} using curl..."
+      # shellcheck disable=SC2086
+      "${DOWNLOADER}" -s -f -L ${CURL_DOWNLOAD_OPTIONS:-} "${DOWNLOAD_URL}" -o "${BINARY}" || exit_with_error curl "${DOWNLOAD_URL}" failed
+    else
+      exit_with_error "found URL ${DOWNLOAD_URL} but no downloader wget or curl"
+    fi
+  fi
+  # Uncompress source code to target folder
+  if [ -n "$UNZIP" ]; then
+    "$UNZIP" "${BINARY}" -d "${HOME}/.gm" > /dev/null
+    mv "${HOME}/.gm/explorer-0.45.x" "${HOME}/.gm/explorer"
+  else
+    "$TAR" -xzf "${BINARY}" -C "${HOME}/.gm"
+    mv "${HOME}/.gm/explorer-0.45.x" "${HOME}/.gm/explorer"
+  fi
+}
+
+explorer_init() {
+  if [ -d "${HOME}/.gm/explorer" ] || [ -f "${HOME}/.gm/explorer" ]; then
+    rm -rf "${HOME}/.gm/explorer"
+  fi
+  #git clone -b v0.45.x https://github.com/ping-pub/explorer "$HOME/.gm/explorer"
+  explorer_download
+}
+
+explorer_config() {
+  if ! [ -d "${HOME}/.gm/explorer" ]; then
+    explorer_init
+  fi
+  rm -rf "${HOME}/.gm/explorer/src/chains"
+  mkdir -p "${HOME}/.gm/explorer/src/chains/mainnet" "${HOME}/.gm/explorer/src/chains/testnet"
+  # Todo: take all nodes into account
+  for NODE in ${VALIDATORS};
+  do
+    CHAIN_ID="$(get_chain_id "$NODE")"
+    APP="\"http://localhost:$(get_app_port "$NODE")\""
+    RPC="\"http://localhost:$(get_rpc_port "$NODE")\""
+    for SUBNODE in ${ALL_NODES};
+    do
+      SUB_CHAIN_ID="$(get_chain_id "$SUBNODE")"
+      if [ "$NODE" == "$SUBNODE" ]; then
+        continue
+      fi
+      if [ "$CHAIN_ID" == "$SUB_CHAIN_ID" ]; then
+        SUBAPP="\"http://localhost:$(get_app_port "$SUBNODE")\""
+        SUBRPC="\"http://localhost:$(get_rpc_port "$SUBNODE")\""
+        APP="${APP},${SUBAPP}"
+        RPC="${RPC},${SUBRPC}"
+      fi
+    done
+    info "adding network '$NODE'"
+    DENOM="$(get_staking_denom "$NODE")"
+    DENOM_SYMBOL="$(echo "${DENOM}" | tr a-z A-Z)"
+    PREFIX="$(get_wallet_account_prefix "$NODE")"
+    GAIAD_BINARY="$(get_gaiad_binary "$NODE")"
+    ("${GAIAD_BINARY}" version --long --output json 2>&1 || echo '{"cosmos_sdk_version":"v0.45.1"}') > "${HOME}/.gm/explorer/sdk_version.json"
+    SDK_VERSION="$(stoml "${HOME}/.gm/explorer/sdk_version.json" cosmos_sdk_version | tr -d v)"
+    cat > "${HOME}/.gm/explorer/src/chains/mainnet/${NODE}.json" << EOF
+{
+    "chain_name": "${CHAIN_ID}",
+    "api": [${APP}],
+    "rpc": [${RPC}],
+    "sdk_version": "${SDK_VERSION}",
+    "coin_type": "118",
+    "min_tx_fee": "10",
+    "addr_prefix": "${PREFIX}",
+    "logo": "/logos/cosmos.svg",
+    "assets": [{
+        "base": "${DENOM}",
+        "symbol": "${DENOM_SYMBOL}",
+        "exponent": "0",
+        "coingecko_id": "",
+        "logo": "/logos/cosmos.svg"
+    }]
+}
+EOF
+  done
+}
+
+explorer_start() {
+  # Copy of start() with a different actual start command and no genesis validation.
+  if is_running "explorer"; then
+    warn "explorer is already running, skipping"
+  else
+    HOME_DIR="$(get_home_dir "explorer")"
+    GAIAD_BINARY="$(which yarn)"
+    GAIAD_LOG="${HOME_DIR}/log"
+    cd "${HOME_DIR}" && "$GAIAD_BINARY" --ignore-engines && nohup "$GAIAD_BINARY" serve > "$GAIAD_LOG" 2>&1 &
+    GAIAD_PID=$!
+    echo "$GAIAD_PID" > "$HOME_DIR/pid"
+    info "explorer started, PID: $GAIAD_PID, LOG: $GAIAD_LOG"
+    sleep 1
+    if ! is_running "explorer"; then
+      warn "explorer failed. Check the logs with \`gm log explorer\`."
+    else
+      info "explorer startup can take up to 20 seconds."
+      info "check the status and the HTTP port in the log using \"gm log explorer\"."
+    fi
+  fi
+}
+
+explorer_status() {
+  # Todo: nicer status page
+  if is_running "explorer"; then
+    HOME_DIR="$(get_home_dir "explorer")"
+    GAIAD_PID_FILE="${HOME_DIR}/pid"
+    GAIAD_PID="unknown"
+    if [ -f "$GAIAD_PID_FILE" ]; then
+      GAIAD_PID="$(cat "$GAIAD_PID_FILE")"
+    fi
+    info "explorer is running with PID ${GAIAD_PID}"
+  else
+    info "explorer is not running"
+  fi
+}
+
+explorer_stop() {
+  stop explorer
 }
