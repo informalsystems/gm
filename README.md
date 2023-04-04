@@ -293,7 +293,7 @@ Tip: We fund it from the wallet called `wallet` so when that runs out, this comm
 This will use the defined `gaiad` binary and configuration.
 If no node is specified then it will nuke all nodes.
 
-Tip: Nodes that were stopped originally will be started. Nodes that were running will be stopped and restarted after
+Tip: Nodes that were stopped originally will NOT be started. Nodes that were running will be stopped and restarted after
 fresh configuration is created.
 
 ### `gm ports [<node> ...]`
