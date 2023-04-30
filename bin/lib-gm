@@ -514,7 +514,6 @@ get_genesis_cmd_prefix() {
     # TODO: Handle the sdk version error case here
     else
       HIGHER_VERSION=$(echo -e "${MINIMUM_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
-
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
         # Perform actions for the >= 0.47.0 case here
         RESULT="genesis"
