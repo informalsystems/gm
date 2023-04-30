@@ -500,7 +500,8 @@ get_sdk_version() {
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
   RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}' | cut -c 2-)"
   if [ -z "$RESULT" ]; then
-    exit_with_error "failed to get sdk version for $1"
+    warn "failed to get sdk version for $1, skipping..."
+    echo ""
   else
     echo "$RESULT"
   fi
@@ -513,10 +514,7 @@ get_genesis_cmd_prefix() {
     if [ -z "$SDK_VERSION" ]; then
       # Handle the sdk version error here, happens when --long is not supported
       GAIAD_BINARY="$(get_gaiad_binary "$1")"
-      OUTPUT=$($GAIAD_BINARY genesis help 2>&1)
-      if [[ ! $OUTPUT =~ "Error: unknown command" ]]; then
-        RESULT="genesis"
-      fi
+      RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
     else
       HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
@@ -740,7 +738,7 @@ start() {
   if is_running "$1"; then
     warn "$1 is already running, skipping"
   else
-    GENESIS_CMD_PREFIX=$(get_genesis_cmd_prefix "$1")
+    [ -z ${GENESIS_CMD_PREFIX+x} ] && GENESIS_CMD_PREFIX=$(get_genesis_cmd_prefix "$1")
     GAIAD_BINARY="$(get_gaiad_binary "$1")"
     HOME_DIR="$(get_home_dir "$1")"
     GAIAD_LOG="${HOME_DIR}/log"
