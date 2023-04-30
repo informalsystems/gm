@@ -504,11 +504,7 @@ get_chain_id() {
 get_sdk_version() {
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
   RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}' | cut -c 2-)"
-  if [ -z "$RESULT" ]; then
-    echo ""
-  else
-    echo "$RESULT"
-  fi
+  echo "$RESULT"
 }
 
 get_genesis_cmd_prefix() {
