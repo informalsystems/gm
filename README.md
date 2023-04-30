@@ -182,8 +182,72 @@ $ hermes create connection --a-chain ibc-0 --b-chain ibc-1
     the wallet details from the validator node and use that wallet for transactions
 
 ## Execution manual
+### `gm alias`
+**Description**: Print aliases for running `gm exec` on each node.
+Execute the alias commands on your shell and simplify your local executions.
+
+Tip: if you use the same node names often, create your own aliases and add them to your `.profile`, `.bashrc` or `.zshrc`.
+
+### `gm create-validator <node> [<node>...]`
+**Description**: Execute a `create-validator` transaction on the network that
+elevates the appointed node(s) to become a validator. Nodes submitted have to be up-to-date (not syncing)
+running full nodes.
+
+Tip: the new validators will use an operator key with the same name in the keystore as the name of the node.
+
+Tip2: you can shorten the command to `gm cv`.
+
+### `gm exec <node> [...]`
+**Description**: Greatly simplify local command execution for nodes.
+
+When you want to run the raw binary, for example to create a transaction on a managed network, there are a
+lot of parameters that `gm` can automatically fill in for you. For example `--home`, `--chain-id` or `--node`.
+
+The `gm exec` command will do exactly that: analyze the command you want to run and add the necessary parameters
+that it knows about.
+
+For example, if one of the gm-managed nodes is called `mynode`, you can get the validators list on a network by:
+```bash
+gm exec mynode query staking validators
+```
+
+Without `gm exec`, you would need to find the binary used for the network, the RPC port for the node and the chain ID:
+```bash
+osmosisd query staking validators --node http://localhost:27000 --chain-id osmosis-2
+```
+
+Tip: The command is also capable of providing the correct keystore for the network automatically.
+Try `gm exec mynode tx bank send`.
+
+### `gm explorer init`
+**Description**: Check explorer requirements and download an experimental block explorer.
+
+Tip: You will need `yarn` installed and `tar` or `unzip`.
+
+### `gm explorer config`
+**Description**: Reconfigure the block explorer's configuration and rebuild the code.
+
+Tip: You only need to re-run this when you makes changes in `gm.toml`.
+
+### `gm explorer start`
+**Description**: Start the experimental block explorer.
+
+Tip: You can see the web interface at [http://localhost:8080](http://localhost:8080).
+
+### `gm explorer status`
+**Description**: Check if the experimental block explorer is running.
+
+Tip: It uses the same mechanism that we use for nodes. The PID is stored in `$HOME/.gm/explorer/pid`.
+
+### `gm explorer stop`
+**Description**: Stop the experimental block explorer.
+
+Tip: You don't need to stop the block explorer to reconfigure its configuration.
+
 ### `gm help`
 **Description**: shows the help screen
+
+Tip: if you run the `gm` command by itself, it will also show the help screen.
 
 ### `gm hermes cc [--exec]`
 **Description**: create and print the `hermes create channel` commands to obtain a fully interconnected IBC mesh on the screen.
@@ -219,12 +283,17 @@ Tip: it will show you the seed phrase if it can find it in the folder.
 
 Tip: You can put `-f` and `-r` anywhere after `log` to get `tail -f` or `tail -r`-like functionality.
 
+### `gm new-wallet <node> <wallet_name> [<wallet_name> ...]`
+**Description**: Create a new wallet on the network associated with the node and fund it with 1 million staking tokens.
+
+Tip: We fund it from the wallet called `wallet` so when that runs out, this command will fail.
+
 ### `gm nuke [<node> ...]`
 **Description**: Stop the node(s), delete their configuration, recreate fresh configuration and start the nodes up again.
 This will use the defined `gaiad` binary and configuration.
 If no node is specified then it will nuke all nodes.
 
-Tip: Nodes that were stopped originally will be started. Nodes that were running will be stopped and restarted after
+Tip: Nodes that were stopped originally will NOT be started. Nodes that were running will be stopped and restarted after
 fresh configuration is created.
 
 ### `gm ports [<node> ...]`
@@ -332,3 +401,53 @@ This will
 * print the `create client` commands for a full-mesh connection among the IBC node networks.
 
 Pick and choose the connections from the list that you want to create or run `gm hermes cc --exec` to run all the commands.
+
+## Example: one network with 4 validators
+In this example we create a network with 4 validators. It leverages the commands introduced in gm v0.1.5.
+
+The configuration only allows one validator to be defined. This validator is a genesis validator: the create-validator
+message is embedded in the genesis file.
+
+Onm a running network we can run any kind of commands, such as creating new validators. These validators start out as
+regular full nodes and a create-validator transaction is submitted on the network to make them validators.
+
+You might need to replace the value of the `gaiad_binary` entry, if you don't set `$GOPATH` in your regular executions.
+
+`gm.toml`:
+```toml
+[global]
+gaiad_binary="$GOPATH/bin/gaiad"
+
+[global.hermes]
+binary="./hermes"
+
+[validator1]
+[tobevalidator2]
+network="validator1"
+[tobevalidator3]
+network="validator1"
+[tobevalidator4]
+network="validator1"
+```
+(Ports will be auto-assigned and written in the configuration file on the first start.)
+
+Run the below:
+```bash
+gm start
+gm create-validator tobevalidator2 tobevalidator3 tobevalidator4
+
+gm exec validator1 query tx 8512BFD53681ACC3C9C1786352ACCDE6350932B75BEE156A5C41A82F634FAAF9 --output json | jq -r .raw_log
+gm exec validator1 query tx 21CCDCA10EBB608B025AAC7750E642F24B523F95757AA89F9F0981FD1F000DF6 --output json | jq -r .raw_log | jq '.[0].events'
+gm exec tobevalidator4 q staking validators
+```
+
+This will
+* create the node configuration and start all nodes
+* create keys for the three "to-be-validators" for valoper use fund the keys
+and submit a create-validator message to the network. At this point the network will have 4 validators.
+* (replace the txhash with the ones you received in the previous command)
+See the results of the execution.
+* If the received raw_log is a JSON object, dwell into its content a bit more.
+* Show the list of validators on the network and their bonding stake. It should show all four validators.
+
+Nodes submitted in the create-validator command have to be up-to-date (not syncing), running full nodes.

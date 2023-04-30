@@ -1,5 +1,29 @@
 # Gaiad Manager Change Log
 
+## v0.1.5
+
+### BUGFIXES
+
+- `gm nuke` will only restart a node if it was running before the command execution. (Stopped nodes will stay stopped.)
+- "network not found" error if get_network was called with a validator node.
+
+### FEATURES
+
+- `gm exec <node>` will parameterize a binary to make it easier to execute direct commands on managed nodes.
+- `gm alias` will print useful aliases for `gm exec` to simplify local execution further.
+- `gm create-validator` (or `gm cv` for short) command will elevate a running node to validator status.
+- `gm new-wallet` command will create a new wallet on the network and fund it with the staking token from the `wallet` wallet.
+- `gm explorer init` downloads the experimental block explorer files and checks requirements.
+- `gm explorer config` reconfigures the experimental block explorer to the managed networks.
+- `gm explorer start` builds and starts the experimental block explorer.
+- `gm explorer status` shows if the experimental block explorer is running.
+- `gm explorer stop` stops a running experimental block explorer.
+
+### IMPROVEMENTS
+
+- Lowered self-bond of genesis validators to 1 million tokens. (Validators created with `create-validator` also bond 1 million.)
+- While setting up the configuration, the `client.toml` gets filled in too.
+
 ## v0.1.4
 
 ### BUGFIXES
@@ -15,11 +39,13 @@
 [#5]: https://github.com/informalsystems/gm/issues/5
 
 ### FEATURES
+
 - `nuke` command implemented: stop running nodes, delete configuration, recreate fresh config and start nodes.
 
 [#3]: https://github.com/informalsystems/gm/issues/3
 
 ### IMPROVEMENTS
+
 - Improved wording in the documentation.
 
 ## v0.1.3
