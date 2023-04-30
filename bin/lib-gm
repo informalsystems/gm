@@ -511,8 +511,12 @@ get_genesis_cmd_prefix() {
     SDK_VERSION=$(get_sdk_version "$1" | cut -c 2-)
     RESULT=""
     if [ -z "$SDK_VERSION" ]; then
-    # TODO: Handle the sdk version error case here
-    RESULT=""
+      # Handle the sdk version error here, happens when --long is not supported
+      GAIAD_BINARY="$(get_gaiad_binary "$1")"
+      OUTPUT=$($GAIAD_BINARY genesis help 2>&1)
+      if [[ ! $OUTPUT =~ "Error: unknown command" ]]; then
+        RESULT="genesis"
+      fi
     else
       HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
