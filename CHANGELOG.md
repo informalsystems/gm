@@ -6,6 +6,9 @@
 
 - `gm nuke` will only restart a node if it was running before the command execution. (Stopped nodes will stay stopped.)
 - "network not found" error if get_network was called with a validator node.
+- `genesis` subcommand introduced in cosmos-sdk v0.47 is now supported ([#7]).
+
+[#7]: https://github.com/informalsystems/gm/issues/7
 
 ### FEATURES
 
