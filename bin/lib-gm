@@ -509,21 +509,15 @@ get_sdk_version() {
 get_genesis_cmd_prefix() {
     GENESIS_BREAKING_VERSION="0.47.0"
     SDK_VERSION=$(get_sdk_version "$1")
-    if [ -z "$SDK_VERSION" ]; then
-    echo "Error occurred while getting the SDK version"
-    # TODO: Handle the sdk version error case here
     RESULT=""
+    if [ -z "$SDK_VERSION" ]; then
+    # TODO: Handle the sdk version error case here
     else
       HIGHER_VERSION=$(echo -e "${MINIMUM_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
 
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
-        echo "The SDK version is greater or equal to $MINIMUM_VERSION"
         # Perform actions for the >= 0.47.0 case here
         RESULT="genesis"
-      else
-        echo "The SDK version is less than $MINIMUM_VERSION"
-        # Perform actions for the < 0.47.0 case here
-        RESULT=""
       fi
     fi
     echo "$RESULT"
