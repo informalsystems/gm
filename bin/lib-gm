@@ -500,6 +500,35 @@ get_chain_id() {
   fi
 }
 
+# Returns empty string if long is not supported
+get_sdk_version() {
+  GAIAD_BINARY="$(get_gaiad_binary "$1")"
+  RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}' | cut -c 2-)"
+  if [ -z "$RESULT" ]; then
+    echo ""
+  else
+    echo "$RESULT"
+  fi
+}
+
+get_genesis_cmd_prefix() {
+    GENESIS_BREAKING_VERSION="0.47.0"
+    SDK_VERSION=$(get_sdk_version "$1")
+    RESULT=""
+    if [ -z "$SDK_VERSION" ]; then
+      # Handle the sdk version error here, happens when --long is not supported
+      GAIAD_BINARY="$(get_gaiad_binary "$1")"
+      RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
+    else
+      HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
+      if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
+        # Perform actions for the >= 0.47.0 case here
+        RESULT="genesis"
+      fi
+    fi
+    echo "$RESULT"
+}
+
 get_add_to_hermes() {
   RESULT="$(stoml -q "$CONFIG_FILE" "${1}.add_to_hermes")"
   if [ -z "$RESULT" ]; then
@@ -630,21 +659,22 @@ create() {
       EXTRA_WALLETS_COUNTER="$((EXTRA_WALLETS_COUNTER - 1))"
     done
     # Add accounts to genesis
+    GENESIS_CMD_PREFIX=$(get_genesis_cmd_prefix "$1")
     DENOM="$(get_staking_denom "$1")"
-    "$GAIAD_BINARY" add-genesis-account validator "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
-    "$GAIAD_BINARY" add-genesis-account wallet "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
+    "$GAIAD_BINARY" $GENESIS_CMD_PREFIX add-genesis-account validator "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
+    "$GAIAD_BINARY" $GENESIS_CMD_PREFIX add-genesis-account wallet "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
     EXTRA_WALLETS_COUNTER="$(get_extra_wallets "$1")"
     while [ "$EXTRA_WALLETS_COUNTER" -gt 0 ];
     do
-      "$GAIAD_BINARY" add-genesis-account "wallet${EXTRA_WALLETS_COUNTER}" "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
+      "$GAIAD_BINARY" $GENESIS_CMD_PREFIX add-genesis-account "wallet${EXTRA_WALLETS_COUNTER}" "100000000${DENOM},100000000samoleans" --keyring-backend test --home "${HOME_DIR}"
       EXTRA_WALLETS_COUNTER="$((EXTRA_WALLETS_COUNTER - 1))"
     done
     # Create gentx
-    "$GAIAD_BINARY" gentx validator "1000000${DENOM}" --keyring-backend test --keyring-dir "${HOME_DIR}" --home "${HOME_DIR}" --chain-id "$1" 2> /dev/null
+    "$GAIAD_BINARY" $GENESIS_CMD_PREFIX gentx validator "1000000${DENOM}" --keyring-backend test --keyring-dir "${HOME_DIR}" --home "${HOME_DIR}" --chain-id "$1" 2> /dev/null
     # Collect gentxs
-    "$GAIAD_BINARY" collect-gentxs --home "${HOME_DIR}" 2> /dev/null
+    "$GAIAD_BINARY" $GENESIS_CMD_PREFIX collect-gentxs --home "${HOME_DIR}" 2> /dev/null
     # Validate genesis
-    "$GAIAD_BINARY" validate-genesis --home "${HOME_DIR}" > /dev/null
+    "$GAIAD_BINARY" $GENESIS_CMD_PREFIX validate-genesis --home "${HOME_DIR}" > /dev/null
   else
     NETWORK_HOME_DIR="$(get_home_dir "$NETWORK")"
     if [ -f "$NETWORK_HOME_DIR/config/genesis.json" ]; then
@@ -723,10 +753,11 @@ start() {
   if is_running "$1"; then
     warn "$1 is already running, skipping"
   else
+    [ -z ${GENESIS_CMD_PREFIX+x} ] && GENESIS_CMD_PREFIX=$(get_genesis_cmd_prefix "$1")
     GAIAD_BINARY="$(get_gaiad_binary "$1")"
     HOME_DIR="$(get_home_dir "$1")"
     GAIAD_LOG="${HOME_DIR}/log"
-    VALIDATION="$("$GAIAD_BINARY" validate-genesis --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 || echo "ERR")"
+    VALIDATION="$("$GAIAD_BINARY" $GENESIS_CMD_PREFIX validate-genesis --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 || echo "ERR")"
     if [ "$VALIDATION" = "ERR" ]; then
       warn "validate-genesis could not complete for ${1}"
     fi
