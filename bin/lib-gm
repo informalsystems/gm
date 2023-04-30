@@ -508,7 +508,7 @@ get_sdk_version() {
 
 get_genesis_cmd_prefix() {
     GENESIS_BREAKING_VERSION="0.47.0"
-    SDK_VERSION=$(get_sdk_version "$1")
+    SDK_VERSION=$(get_sdk_version "$1" | cut -c 2-)
     RESULT=""
     if [ -z "$SDK_VERSION" ]; then
     # TODO: Handle the sdk version error case here
