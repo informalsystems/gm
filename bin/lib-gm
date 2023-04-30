@@ -735,10 +735,11 @@ start() {
   if is_running "$1"; then
     warn "$1 is already running, skipping"
   else
+    GENESIS_CMD_PREFIX=$(get_genesis_cmd_prefix "$1")
     GAIAD_BINARY="$(get_gaiad_binary "$1")"
     HOME_DIR="$(get_home_dir "$1")"
     GAIAD_LOG="${HOME_DIR}/log"
-    VALIDATION="$("$GAIAD_BINARY" validate-genesis --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 || echo "ERR")"
+    VALIDATION="$("$GAIAD_BINARY" "$GENESIS_CMD_PREFIX" validate-genesis --home "$HOME_DIR" > "$GAIAD_LOG" 2>&1 || echo "ERR")"
     if [ "$VALIDATION" = "ERR" ]; then
       warn "validate-genesis could not complete for ${1}"
     fi
