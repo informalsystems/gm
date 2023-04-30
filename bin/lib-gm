@@ -498,7 +498,7 @@ get_chain_id() {
 
 get_sdk_version() {
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
-  RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}')"
+  RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}' | cut -c 2-)"
   if [ -z "$RESULT" ]; then
     exit_with_error "failed to get sdk version for $1"
   else
@@ -508,7 +508,7 @@ get_sdk_version() {
 
 get_genesis_cmd_prefix() {
     GENESIS_BREAKING_VERSION="0.47.0"
-    SDK_VERSION=$(get_sdk_version "$1" | cut -c 2-)
+    SDK_VERSION=$(get_sdk_version "$1")
     RESULT=""
     if [ -z "$SDK_VERSION" ]; then
       # Handle the sdk version error here, happens when --long is not supported
