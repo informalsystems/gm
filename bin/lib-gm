@@ -515,13 +515,13 @@ get_genesis_cmd_prefix() {
       GAIAD_BINARY="$(get_gaiad_binary "$1")"
       OUTPUT=$($GAIAD_BINARY genesis help 2>&1)
       if [[ ! $OUTPUT =~ "Error: unknown command" ]]; then
-        RESULT="genesis "
+        RESULT="genesis"
       fi
     else
       HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
         # Perform actions for the >= 0.47.0 case here
-        RESULT="genesis "
+        RESULT="genesis"
       fi
     fi
     echo "$RESULT"
