@@ -496,6 +496,16 @@ get_chain_id() {
   fi
 }
 
+get_sdk_version() {
+  GAIAD_BINARY="$(get_gaiad_binary "$1")"
+  RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}')"
+  if [ -z "$RESULT" ]; then
+    exit_with_error "failed to get sdk version for $1"
+  else
+    echo "$RESULT"
+  fi
+}
+
 get_add_to_hermes() {
   RESULT="$(stoml -q "$CONFIG_FILE" "${1}.add_to_hermes")"
   if [ -z "$RESULT" ]; then
