@@ -522,7 +522,7 @@ get_genesis_cmd_prefix() {
       GAIAD_BINARY="$(get_gaiad_binary "$1")"
       RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
     else
-      HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | head -1)
+      HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | sed -n '1p')
       if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
         # Perform actions for the >= 0.47.0 case here
         RESULT="genesis"
