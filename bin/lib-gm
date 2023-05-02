@@ -512,7 +512,7 @@ get_chain_id() {
 # Returns empty string if long is not supported
 get_sdk_version() {
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
-  RESULT="$("$GAIAD_BINARY" version --long | grep "cosmos_sdk_version" | awk '{print $2}' | cut -c 2-)"
+  RESULT="$("$GAIAD_BINARY" version --long | sed -n '/cosmos_sdk_version/ s/cosmos_sdk_version: v\(.*\)$/\1/p')"
   echo "$RESULT"
 }
 
