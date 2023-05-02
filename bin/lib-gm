@@ -251,9 +251,6 @@ enforce_requirements() {
   if [ -z "$(which dirname || echo)" ]; then
     exit_with_error "missing dirname, please install it"
   fi
-  if [ -z "$(which head || echo)" ]; then
-    exit_with_error "missing head, please install it"
-  fi
   STOML="$(which stoml || echo)"
   if [ -z "$STOML" ]; then
     exit_with_error "missing stoml, install it from https://github.com/freshautomations/stoml/releases"
@@ -268,7 +265,7 @@ enforce_requirements() {
   if [ -z "$(which sort || echo)" ]; then
     exit_with_error "missing sort, please install it"
   fi
-  if ! test "$(echo "a\nb" | sort -Vr | head -1)" = "b"; then
+  if ! test "$(echo "a\nb" | sort -Vr | sed -n '1p')" = "b"; then
     exit_with_error "missing sort -V, please install a newer version of sort"
   fi
 }
