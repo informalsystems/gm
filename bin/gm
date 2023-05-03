@@ -30,11 +30,15 @@ Usage:
 
 COMMANDS    DESCRIPTION
 
+alias       print useful aliases for exec
+exec        execute binary commands on nodes
+explorer    sub-commands for the experimental blockchain explorer
 help        print this help and exit
 hermes      sub-command for hermes-related configuration
 install     install the script for the local user
 keys        print the keys of validator nodes
 log         print the log of a node
+new-wallet  create funded wallet
 nuke        stop one or more nodes, delete their configuration and restart them
 ports       print the ports of a (running) node
 start       start one or more nodes (starts all nodes if no parameter is given)
@@ -64,7 +68,131 @@ keys         add keys to $HOME/.hermes
 EOF
 }
 
+explorer_usage() {
+  cat <<EOF
+Gaiad Manager $(version)
+
+Usage:
+  gm explorer <SUBCOMMAND> [[<PARAMS>]...]
+
+SUBCOMMANDS    DESCRIPTION
+
+init           Check requirements and download explorer
+config         Configure/reconfigure explorer network chains
+start          Start the explorer
+status         Check if the explorer is running
+stop           Stop the explorer
+
+EOF
+}
+
 case "${1:-help}" in
+  alias)
+    disable_when_json
+    parse_config_file
+    for i in ${ALL_NODES}
+    do
+      echo "alias t-${i}=\"gm exec ${i}\""
+    done
+    for i in ${VALIDATORS}
+    do
+      echo "alias w-${i}=\"gm exec ${i} keys show -a\""
+    done
+    ;;
+  cv|create-validator)
+    parse_config_file
+    shift
+    if [ $# -eq 0 ]; then
+      info "Usage:"
+      info "       gm create-validator <node_name> [<node_name>...]"
+      info ""
+      info "       node_name   - an existing and running non-validator node on a network"
+      info ""
+      exit_with_error "at least one node is required"
+    fi
+    while [ $# -gt 0 ];
+    do
+      NODE="${1}"
+      if a_in_b "$NODE" "$VALIDATORS"; then
+        warn "node '${1}' is already a validator, skipping..."
+        shift
+        continue
+      fi
+      if ! a_in_b "$NODE" "$FULL_NODES"; then
+        warn "non-existent node '${1}', skipping..."
+        shift
+        continue
+      fi
+      if ! is_running "$NODE"; then
+        warn "node '${1}' is not running, skipping..."
+        shift
+        continue
+      fi
+      create_wallet "$NODE" "$NODE"
+      sleep 10
+      create_validator "$NODE" "$NODE"
+      shift
+    done
+    ;;
+  explorer)
+    disable_when_json
+    shift
+    case "${1:-help}" in
+      help)
+        disable_when_json
+        explorer_usage
+        ;;
+      init)
+        explorer_requirements
+        explorer_init
+        ;;
+      config|configure)
+        parse_config_file
+        explorer_config
+        ;;
+      start)
+        explorer_requirements
+        parse_config_file
+        explorer_start
+        ;;
+      status)
+        parse_config_file
+        explorer_status
+        ;;
+      stop)
+        parse_config_file
+        explorer_stop
+        ;;
+      *)
+        disable_when_json
+        explorer_usage
+        exit_with_error "could not understand the command explorer '$1'"
+        ;;
+    esac
+    ;;
+  new-wallet)
+    parse_config_file
+    shift
+    if [ $# -lt 2 ]; then
+      info "Usage:"
+      info "       gm new-wallet <node_name> <wallet_name> [<wallet_name>...]"
+      info ""
+      info "       node_name   - a running node on a live network"
+      info "       wallet_name - a new wallet name"
+      info ""
+      exit_with_error "invalid parameters"
+    fi
+    create_wallet "$@"
+    ;;
+  exec)
+    parse_config_file
+    shift
+    if [ "$#" -eq 0 ]; then
+      exit_with_error "no node was given"
+    fi
+    warn_unknown_node "$1"
+    exec_function "$@"
+    ;;
   help)
     disable_when_json
     usage
@@ -98,10 +226,10 @@ case "${1:-help}" in
         parse_config_file
         if [ $# -eq 1 ]; then
           hermes_cc
-        else 
+        else
           if [ $# -eq 2 ] && [ "$2" = "--exec" ]; then
             hermes_cc | sh
-          else 
+          else
             echo "usage : gm hermes cc [--exec]"
           fi
         fi
@@ -183,12 +311,16 @@ case "${1:-help}" in
     else
       NODES_TO_STOP="$*"
     fi
+    NOT_RUNNING=""
     for i in $NODES_TO_STOP
     do
       warn_unknown_node "$i" || continue
       if is_running "$i"; then
         stop "$i"
         sleep 1
+      else
+        info "Already stopped ${i}..."
+        NOT_RUNNING="${NOT_RUNNING} $i"
       fi
       safer_rm "$i"
     done
@@ -200,7 +332,11 @@ case "${1:-help}" in
       if get_auto_maintain_config "$i"; then
         configure "$i"
       fi
-      start "$i"
+      if a_in_b "$i" "${NOT_RUNNING}"; then
+        info "$i not started, it was in stopped state before..."
+      else
+        start "$i"
+      fi
     done
     ;;
   ports)
