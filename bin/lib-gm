@@ -5,7 +5,7 @@ if [ "${DEBUG:-}" = "2" ]; then
 fi
 
 version() {
-  VERSION="v0.1.5"
+  VERSION="v0.1.6"
   if is_json_output; then
     echo '{"status": "success", "message": "'"${VERSION}"'"}'
   else
@@ -969,10 +969,10 @@ list_keys() {
     elif [ "$MNEMONIC" != "$line" ]; then
       if a_in_b "${KEY_NAME%%v0}" "$VALIDATORS"; then
         echo "mnemonic: \"$(stoml "${HOME_DIR}/key_seed.json" secret)\""
-      elif a_in_b "${KEY_NAME%%n0}" "$FULL_NODES"; then
-        echo "mnemonic: \"$(stoml "${HOME_DIR}/key_seed.json" secret)\""
       elif [ -f "${HOME_DIR}/${KEY_NAME}_seed.json" ]; then
         echo "mnemonic: \"$(stoml "${HOME_DIR}/${KEY_NAME}_seed.json" mnemonic)\""
+      elif a_in_b "${KEY_NAME%%n0}" "$FULL_NODES"; then
+        echo "mnemonic: \"$(stoml "${HOME_DIR}/key_seed.json" secret)\""
       else
         echo "mnemonic: \"\""
       fi
@@ -1345,7 +1345,7 @@ create_wallet() {
     # If the key file does not exist, we will create a new key.
     else
       if [ -z "${HDPATH}" ]; then
-        if ! "${GAIAD_BINARY}" keys add "$1" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1 1>/dev/null; then
+        if ! "${GAIAD_BINARY}" keys add "$1" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1; then
           warn "could not create key '${1}' on network '${NETWORK}'"
           shift
           continue
@@ -1353,7 +1353,7 @@ create_wallet() {
           info "created key '${1}' on network '${NETWORK}'"
         fi
       else
-        if ! "${GAIAD_BINARY}" keys add "$1" --hd-path "$HDPATH" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1 1>/dev/null; then
+        if ! "${GAIAD_BINARY}" keys add "$1" --hd-path "$HDPATH" --keyring-backend test --home "${NETWORK_HOME_DIR}" --output json 1> "${NETWORK_HOME_DIR}/${1}_seed.json" 2>&1; then
           warn "could not create key '${1}' on network '${NETWORK}'"
           shift
           continue

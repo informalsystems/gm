@@ -1,5 +1,14 @@
 # Gaiad Manager Change Log
 
+## v0.1.6
+
+### BUGFIXES
+
+- Documented `create-validator` in the help section.
+- When using `create-validator the seed phrase for the validator wallet was not saved.
+- When listing keys that were created using `create-validator`, the validator's key was not found 
+  because it was considered a full node first and full nodes store keys in key_seed.json, not <name>_seed.json.
+
 ## v0.1.5
 
 ### BUGFIXES
