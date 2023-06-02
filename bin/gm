@@ -30,23 +30,24 @@ Usage:
 
 COMMANDS    DESCRIPTION
 
-alias       print useful aliases for exec
-exec        execute binary commands on nodes
-explorer    sub-commands for the experimental blockchain explorer
-help        print this help and exit
-hermes      sub-command for hermes-related configuration
-install     install the script for the local user
-keys        print the keys of validator nodes
-log         print the log of a node
-new-wallet  create funded wallet
-nuke        stop one or more nodes, delete their configuration and restart them
-ports       print the ports of a (running) node
-start       start one or more nodes (starts all nodes if no parameter is given)
-status      print the status of nodes
-stop        stop one or more nodes (stops all nodes if no parameter is given)
-reset       reset one or more nodes' database (resets all nodes if no parameter is given)
-rm          delete the configuration of a node
-version     print the application version
+alias            print useful aliases for exec
+create-validator used on a running full-node, it sends a create-validator transaction
+exec             execute binary commands on nodes
+explorer         sub-commands for the experimental blockchain explorer
+help             print this help and exit
+hermes           sub-command for hermes-related configuration
+install          install the script for the local user
+keys             print the keys of validator nodes
+log              print the log of a node
+new-wallet       create funded wallet
+nuke             stop one or more nodes, delete their configuration and restart them
+ports            print the ports of a (running) node
+start            start one or more nodes (starts all nodes if no parameter is given)
+status           print the status of nodes
+stop             stop one or more nodes (stops all nodes if no parameter is given)
+reset            reset one or more nodes' database (resets all nodes if no parameter is given)
+rm               delete the configuration of a node
+version          print the application version
 
 EOF
 }
