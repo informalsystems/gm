@@ -514,21 +514,8 @@ get_sdk_version() {
 }
 
 get_genesis_cmd_prefix() {
-    GENESIS_BREAKING_VERSION="0.47.0"
-    SDK_VERSION="$(get_sdk_version "$1")"
-    RESULT=""
-    if [ -z "$SDK_VERSION" ]; then
-      # Handle the sdk version error here, happens when --long is not supported
-      GAIAD_BINARY="$(get_gaiad_binary "$1")"
-      RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
-    else
-      HIGHER_VERSION=$(echo "${GENESIS_BREAKING_VERSION}\n${SDK_VERSION}" | sort -Vr | sed -n '1p')
-      if [ "$HIGHER_VERSION" = "$SDK_VERSION" ]; then
-        # Perform actions for the >= 0.47.0 case here
-        RESULT="genesis"
-      fi
-    fi
-    echo "$RESULT"
+  GAIAD_BINARY="$(get_gaiad_binary "$1")"
+  RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
 }
 
 get_add_to_hermes() {
