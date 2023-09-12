@@ -516,6 +516,7 @@ get_sdk_version() {
 get_genesis_cmd_prefix() {
   GAIAD_BINARY="$(get_gaiad_binary "$1")"
   RESULT="$($GAIAD_BINARY | grep -q 'gentx' || echo "genesis")"
+  echo "$RESULT"
 }
 
 get_add_to_hermes() {
