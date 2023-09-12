@@ -1039,8 +1039,9 @@ EOF
 id = '${ID}'
 rpc_addr = 'http://localhost:${RPC}'
 grpc_addr = 'http://localhost:${GRPC}'
-websocket_addr = 'ws://localhost:${RPC}/websocket'
+event_source = { mode = 'push', url = 'ws://localhost:${RPC}/websocket', batch_delay = '200ms' }
 rpc_timeout = '15s'
+trusted_node = true
 account_prefix = '${ACCOUNT_PREFIX}'
 key_name = 'wallet'
 store_prefix = 'ibc'
