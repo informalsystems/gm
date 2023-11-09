@@ -1025,6 +1025,7 @@ EOF
     cat <<EOF >> "$GLOBAL_HERMES_CONFIG"
 [[chains]]
 id = '${ID}'
+type = 'CosmosSdk'
 rpc_addr = 'http://localhost:${RPC}'
 grpc_addr = 'http://localhost:${GRPC}'
 event_source = { mode = 'push', url = 'ws://localhost:${RPC}/websocket', batch_delay = '200ms' }
@@ -1034,7 +1035,7 @@ account_prefix = '${ACCOUNT_PREFIX}'
 key_name = 'wallet'
 store_prefix = 'ibc'
 gas_price = { price = 0.001, denom = '${DENOM}' }
-gas_multiplier = 1.1
+gas_multiplier = 1.2
 default_gas = 1000000
 max_gas = 10000000
 max_msg_num = 30
